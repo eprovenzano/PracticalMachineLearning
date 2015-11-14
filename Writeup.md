@@ -1,145 +1,221 @@
-Coursera Practical Machine Learning Peer Assessment - Prediction Assignment Writeup
+Practical Machine Learning - Prediction Assignment Writeup
+========================================================
 
-Summary
+This document describe the analysis done for the prediction assignment of the practical machine learning course.
 
-Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about 
-personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of 
-enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, 
-or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, 
-but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, 
-forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different 
-ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har. The goal of this project 
-is to predict the manner in which they did the execise.
+The first part is the declaration of the package which will be used. In addition to caret & randomForest already seen on the course, I used Hmisc to help me on the data analysis phases & foreach & doParallel to decrease the random forrest processing time by parallelising the operation.
+Note : to be reproductible, I also set the seed value.
 
-The dataset used in this project can be found here, and the experiment details are described in the original paper.
 
-Preparing
-All work was saved on local computer.
-Following code is to load the dataset
-
+```r
+options(warn=-1)
 library(caret)
-## Loading lattice
-## Loading ggplot2
-training<-read.csv("pml-training.csv",na.strings=c("NA","#DIV/0!"))
-testing<-read.csv("pml-testing.csv",na.strings=c("NA","#DIV/0!"))
-Data Exploring
-dim(training)
-## [1] 19622   160
-table(training$classe)
-## 
+```
 
-##    A    B    C    D    E 
-## 5580 3797 3422 3216 3607
-There are 19622 observation in traning dataset, including 160 variables. The last column is the target variable classe. 
-The most abundant class is A.
+```
+## Loading required package: lattice
+## Loading required package: ggplot2
+```
 
-There are some variables having a lot of missing values, for simplicity, 
-I have removed all the variables containing NA values. And also, several variables are not direcly related to the 
-target variable classe, I also removed those varialbes, those variables are “x”, “user_name”, and all the time 
-related variables, such as “raw_timestamp_part_1” etc.
+```r
+library(randomForest)
+```
 
-NA_Count = sapply(1:dim(training)[2],function(x)sum(is.na(training[,x])))
-NA_list = which(NA_Count>0)
-colnames(training[,c(1:7)])
-## [1] "X"                    "user_name"            "raw_timestamp_part_1"
-## [4] "raw_timestamp_part_2" "cvtd_timestamp"       "new_window"          
-## [7] "num_window"
-training = training[,-NA_list]
-training = training[,-c(1:7)]
-training$classe = factor(training$classe)
-The testing dataset has been processed in the same way
-
-testing = testing[,-NA_list]
-testing = testing[,-c(1:7)]
-Modeling with Cross Validation
-The problem presenting here is a classification problem, I tried to use the classification method in caret package: classification tree algorithm and random force. I also carried out 3-fold validation using the trainControl function.
-
-set.seed(1234)
-cv3 = trainControl(method="cv",number=3,allowParallel=TRUE,verboseIter=TRUE)
-modrf = train(classe~., data=training, method="rf",trControl=cv3)
-## Loading required package: randomForest
-## randomForest 4.6-10
+```
+## randomForest 4.6-7
 ## Type rfNews() to see new features/changes/bug fixes.
-## + Fold1: mtry= 2 
-## - Fold1: mtry= 2 
-## + Fold1: mtry=27 
-## - Fold1: mtry=27 
-## + Fold1: mtry=52 
-## - Fold1: mtry=52 
-## + Fold2: mtry= 2 
-## - Fold2: mtry= 2 
-## + Fold2: mtry=27 
-## - Fold2: mtry=27 
-## + Fold2: mtry=52 
-## - Fold2: mtry=52 
-## + Fold3: mtry= 2 
-## - Fold3: mtry= 2 
-## + Fold3: mtry=27 
-## - Fold3: mtry=27 
-## + Fold3: mtry=52 
-## - Fold3: mtry=52 
-## Aggregating results
-## Selecting tuning parameters
-## Fitting mtry = 27 on full training set
-modtree = train(classe~.,data=training,method="rpart",trControl=cv3)
-## Loading required package: rpart
-## + Fold1: cp=0.03568 
-## - Fold1: cp=0.03568 
-## + Fold2: cp=0.03568 
-## - Fold2: cp=0.03568 
-## + Fold3: cp=0.03568 
-## - Fold3: cp=0.03568 
-## Aggregating results
-## Selecting tuning parameters
-## Fitting cp = 0.0357 on full training set
-We can check the performance of these two model on the testing dataset
+```
 
-prf=predict(modrf,training)
-ptree=predict(modtree,training)
-table(prf,training$classe)
-##    
-## prf    A    B    C    D    E
-##   A 5580    0    0    0    0
-##   B    0 3797    0    0    0
-##   C    0    0 3422    0    0
-##   D    0    0    0 3216    0
-##   E    0    0    0    0 3607
-table(ptree,training$classe)
-##      
-## ptree    A    B    C    D    E
-##     A 5080 1581 1587 1449  524
-##     B   81 1286  108  568  486
-##     C  405  930 1727 1199  966
-##     D    0    0    0    0    0
-##     E   14    0    0    0 1631
-For the testing dataset.
+```r
+library(Hmisc)
+```
 
-prf=predict(modrf,testing)
-ptree=predict(modtree,testing)
-table(prf,ptree)
-##    ptree
-## prf A B C D E
-##   A 7 0 0 0 0
-##   B 3 0 5 0 0
-##   C 0 0 1 0 0
-##   D 0 0 1 0 0
-##   E 1 0 2 0 0
-From the results, it appears that the random forest model has the best accuracy for testing dataset.
+```
+## Loading required package: grid
+## Loading required package: survival
+## Loading required package: splines
+## 
+## Attaching package: 'survival'
+## 
+## L'objet suivant est masqué from 'package:caret':
+## 
+##     cluster
+## 
+## Loading required package: Formula
+## 
+## Attaching package: 'Hmisc'
+## 
+## L'objet suivant est masqué from 'package:randomForest':
+## 
+##     combine
+## 
+## Les objets suivants sont masqués from 'package:base':
+## 
+##     format.pval, round.POSIXt, trunc.POSIXt, units
+```
 
-Final Conclusion:
+```r
+library(foreach)
+library(doParallel)
+```
 
-I decided to use the random forest model to the testing dataset and submit the results.
+```
+## Loading required package: iterators
+## Loading required package: parallel
+```
 
-answers=predict(modrf,testing)
-pml_write_files = function(x){
-  n = length(x)
-  for(i in 1:n){
-    filename = paste0("problem_id_",i,".txt")
-    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
-  }
-}
-answers
-##  [1] B A B A A E D B A A B C B A E E A B B B
-## Levels: A B C D E
-pml_write_files(answers)
-The predicted classes for the 20 tests are: B A B A A E D B A A B C B A E E A B B B.
+```r
+set.seed(4356)
+```
+
+The first step is to load the csv file data to dataframe and analyze the type & the completion rate of the data (commands are commented to limit the output size. You can run it deleting the "#" ) :
+
+
+```r
+data <- read.csv("/projects/Coursera-PracticalMachineLearning/data//pml-training.csv")
+#summary(data)
+#describe(data)
+#sapply(data, class)
+#str(data)
+```
+
+This analysis allows us to note two main points :
+ 1 - Some numeric data have been imported as factor because of the presence of some characters ("#DIV/0!")
+ 2 - Some columns have a really low completion rate (a lot of missing data)
+ 
+To manage the first issue we need to reimport data ignoring "#DIV/0!" values :
+
+
+```r
+data <- read.csv("/projects/Coursera-PracticalMachineLearning/data//pml-training.csv", na.strings=c("#DIV/0!") )
+```
+
+And force the cast to numeric values for the specified columns (i.e.: 8 to end) :
+
+
+```r
+cData <- data
+for(i in c(8:ncol(cData)-1)) {cData[,i] = as.numeric(as.character(cData[,i]))}
+```
+
+To manage the second issue we will select as feature only the column with a 100% completion rate ( as seen in analysis phase, the completion rate in this dataset is very binary) We will also filter some features which seem to be useless like "X"", timestamps, "new_window" and "num_window". We filter also user_name because we don't want learn from this feature (name cannot be a good feature in our case and we don't want to limit the classifier to the name existing in our training dataset)
+
+
+```r
+featuresnames <- colnames(cData[colSums(is.na(cData)) == 0])[-(1:7)]
+features <- cData[featuresnames]
+```
+
+
+We have now a dataframe "features which contains all the workable features. So the first step is to split the dataset in two part : the first for training and the second for testing.
+
+
+```r
+xdata <- createDataPartition(y=features$classe, p=3/4, list=FALSE )
+training <- features[xdata,]
+testing <- features[-xdata,]
+```
+
+
+We can now train a classifier with the training data. To do that we will use parallelise the processing with the foreach and doParallel package : we call registerDoParallel to instantiate the configuration. (By default it's assign the half of the core available on your laptop, for me it's 4, because of hyperthreading) So we ask to process 4 random forest with 150 trees each and combine then to have a random forest model with a total of 600 trees.
+
+```r
+registerDoParallel()
+model <- foreach(ntree=rep(150, 4), .combine=randomForest::combine) %dopar% randomForest(training[-ncol(training)], training$classe, ntree=ntree)
+```
+
+To evaluate the model we will use the confusionmatrix method and we will focus on accuracy, sensitivity & specificity metrics :
+
+```r
+predictionsTr <- predict(model, newdata=training)
+confusionMatrix(predictionsTr,training$classe)
+```
+
+```
+## 
+## Attaching package: 'e1071'
+## 
+## L'objet suivant est masqué from 'package:Hmisc':
+## 
+##     impute
+```
+
+```
+## Confusion Matrix and Statistics
+## 
+##           Reference
+## Prediction    A    B    C    D    E
+##          A 4185    0    0    0    0
+##          B    0 2848    0    0    0
+##          C    0    0 2567    0    0
+##          D    0    0    0 2412    0
+##          E    0    0    0    0 2706
+## 
+## Overall Statistics
+##                                 
+##                Accuracy : 1     
+##                  95% CI : (1, 1)
+##     No Information Rate : 0.284 
+##     P-Value [Acc > NIR] : <2e-16
+##                                 
+##                   Kappa : 1     
+##  Mcnemar's Test P-Value : NA    
+## 
+## Statistics by Class:
+## 
+##                      Class: A Class: B Class: C Class: D Class: E
+## Sensitivity             1.000    1.000    1.000    1.000    1.000
+## Specificity             1.000    1.000    1.000    1.000    1.000
+## Pos Pred Value          1.000    1.000    1.000    1.000    1.000
+## Neg Pred Value          1.000    1.000    1.000    1.000    1.000
+## Prevalence              0.284    0.194    0.174    0.164    0.184
+## Detection Rate          0.284    0.194    0.174    0.164    0.184
+## Detection Prevalence    0.284    0.194    0.174    0.164    0.184
+## Balanced Accuracy       1.000    1.000    1.000    1.000    1.000
+```
+
+```r
+predictionsTe <- predict(model, newdata=testing)
+confusionMatrix(predictionsTe,testing$classe)
+```
+
+```
+## Confusion Matrix and Statistics
+## 
+##           Reference
+## Prediction    A    B    C    D    E
+##          A 1395    1    0    0    0
+##          B    0  946    6    0    0
+##          C    0    2  849    6    1
+##          D    0    0    0  798    1
+##          E    0    0    0    0  899
+## 
+## Overall Statistics
+##                                         
+##                Accuracy : 0.997         
+##                  95% CI : (0.994, 0.998)
+##     No Information Rate : 0.284         
+##     P-Value [Acc > NIR] : <2e-16        
+##                                         
+##                   Kappa : 0.996         
+##  Mcnemar's Test P-Value : NA            
+## 
+## Statistics by Class:
+## 
+##                      Class: A Class: B Class: C Class: D Class: E
+## Sensitivity             1.000    0.997    0.993    0.993    0.998
+## Specificity             1.000    0.998    0.998    1.000    1.000
+## Pos Pred Value          0.999    0.994    0.990    0.999    1.000
+## Neg Pred Value          1.000    0.999    0.999    0.999    1.000
+## Prevalence              0.284    0.194    0.174    0.164    0.184
+## Detection Rate          0.284    0.193    0.173    0.163    0.183
+## Detection Prevalence    0.285    0.194    0.175    0.163    0.183
+## Balanced Accuracy       1.000    0.998    0.995    0.996    0.999
+```
+
+As seen by the result of the confusionmatrix, the model is good and efficient because it has an accuracy of 0.997 and very good sensitivity & specificity values on the testing dataset. (the lowest value is 0.992 for the sensitivity of the class C)
+
+It seems also very good because It scores 100% (20/20) on the Course Project Submission (the 20 values to predict)
+
+
+I also try to play with preprocessing generating PCA or scale & center the features but the accuracy was lower.
