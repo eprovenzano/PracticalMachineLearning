@@ -126,8 +126,9 @@ table(prf,ptree)
 ##   E 1 0 2 0 0
 From the results, it appears that the random forest model has the best accuracy for testing dataset.
 
-Conclusion
-Finally, I chosed the random forest model to the testing dataset for submission result.
+Final Conclusion:
+
+I decided to use the random forest model to the testing dataset and submit the results.
 
 answers=predict(modrf,testing)
 pml_write_files = function(x){
